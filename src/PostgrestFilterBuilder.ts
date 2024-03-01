@@ -1,6 +1,7 @@
 import PostgrestTransformBuilder from './PostgrestTransformBuilder'
 import { GenericSchema } from './types'
 
+//GOOD FILTER OPERATORS 
 type FilterOperator =
   | 'eq'
   | 'neq'
