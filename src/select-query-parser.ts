@@ -204,6 +204,8 @@ type ConstructFieldDefinition<
     >
   : Field extends { children: [] }
   ? {}
+  : Field extends { name: string; original: string; children: ['count'] }
+  ? { [K in Field['name']]: number }
   : Field extends { name: string; original: string; hint: string; children: unknown[] }
   ? {
       [_ in Field['name']]: GetResultHelper<

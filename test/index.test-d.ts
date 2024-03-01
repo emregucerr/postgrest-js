@@ -149,3 +149,4 @@ const postgrest = new PostgrestClient<Database>(REST_URL)
     channels.channel_details
   )
 }
+// Removed undeclared type GetResult usage
