@@ -2,6 +2,8 @@
 
 import { GenericSchema, Prettify } from './types'
 
+type CountAggregate = 'count';
+
 type Whitespace = ' ' | '\n' | '\t'
 
 type LowerAlphabet =
@@ -191,6 +193,9 @@ type ConstructFieldDefinition<
   Field
 > = Field extends { star: true }
   ? Row
+  : Field extends { name: 'count' }
+  ? { [K in Field['name']]: number }
+  // Removed erroneous line causing syntax errors
   : Field extends { spread: true; original: string; children: unknown[] }
   ? GetResultHelper<
       Schema,
@@ -345,6 +350,8 @@ type ParseIdentifier<Input extends string> = ReadLetters<Input> extends [
  */
 type ParseField<Input extends string> = Input extends ''
   ? ParserError<'Empty string'>
+  : Input extends `${CountAggregate}${infer Remainder}`
+  ? [{ name: CountAggregate }, EatWhitespace<Remainder>]
   : ParseIdentifier<Input> extends [infer Name, `${infer Remainder}`]
   ? EatWhitespace<Remainder> extends `!inner${infer Remainder}`
     ? ParseEmbeddedResource<EatWhitespace<Remainder>> extends [infer Fields, `${infer Remainder}`]
