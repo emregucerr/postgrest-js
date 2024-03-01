@@ -202,6 +202,8 @@ type ConstructFieldDefinition<
       Field['children'],
       unknown
     >
+  : Field extends { count: true }
+  ? number | null
   : Field extends { children: [] }
   ? {}
   : Field extends { name: string; original: string; hint: string; children: unknown[] }
@@ -411,13 +413,17 @@ type ParseField<Input extends string> = Input extends ''
  */
 type ParseNode<Input extends string> = Input extends ''
   ? ParserError<'Empty string'>
-  : // `*`
-  Input extends `*${infer Remainder}`
+  : Input extends `*${infer Remainder}` ?
   ? [{ star: true }, EatWhitespace<Remainder>]
+  :
+  Input extends `count${infer Remainder}`
+  ? [{ count: true }, EatWhitespace<Remainder>]
   : // `...field`
   Input extends `...${infer Remainder}`
   ? ParseField<EatWhitespace<Remainder>> extends [infer Field, `${infer Remainder}`]
-    ? Field extends { children: unknown[] }
+    ? [{ spread: true } & Field, EatWhitespace<Remainder>]
+    : Field extends { children: unknown[] }
+    ? [{ spread: true } & Field, EatWhitespace<Remainder>]
       ? [Prettify<{ spread: true } & Field>, EatWhitespace<Remainder>]
       : ParserError<'Unable to parse spread resource'>
     : ParserError<'Unable to parse spread resource'>
