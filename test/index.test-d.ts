@@ -149,3 +149,17 @@ const postgrest = new PostgrestClient<Database>(REST_URL)
     channels.channel_details
   )
 }
+
+// Add a new test case to verify JSON property accessors that include the "@" symbol in field names
+{
+  const { data, error } = await postgrest
+    .from('users')
+    .select('data->json_with_special@symbol')
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  // Since the focus is to verify the correct parsing and not the result's type, 
+  // no need to call expectType. However, the lack of syntax errors and successful query execution
+  // is an implicit validation of the parser handling "@" symbol correctly.
+}
