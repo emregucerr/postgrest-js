@@ -149,3 +149,19 @@ const postgrest = new PostgrestClient<Database>(REST_URL)
     channels.channel_details
   )
 }
+// many-to-many relationship count
+{
+  const { data: user, error } = await postgrest.from('users').select('messages(count)').single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  expectType<{ messages: number }>(user)
+}
+// Deeply nested relationship count
+{
+  const { data: user, error } = await postgrest.from('users').select('channels(messages(count))').single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  expectType<{ channels: { messages: number }[] }>(user)
+}
