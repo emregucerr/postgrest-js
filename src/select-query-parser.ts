@@ -36,7 +36,7 @@ type Alphabet = LowerAlphabet | Uppercase<LowerAlphabet>
 
 type Digit = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0'
 
-type Letter = Alphabet | Digit | '_'
+type Letter = Alphabet | Digit | '_' | '@'
 
 type Json = string | number | boolean | null | { [key: string]: Json } | Json[]
 
