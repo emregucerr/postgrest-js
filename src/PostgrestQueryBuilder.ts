@@ -104,13 +104,6 @@ export default class PostgrestQueryBuilder<
       count?: 'exact' | 'planned' | 'estimated'
     }
   ): PostgrestFilterBuilder<Schema, Relation['Row'], null, RelationName, Relationships>
-  insert<Row extends Relation extends { Insert: unknown } ? Relation['Insert'] : never>(
-    values: Row[],
-    options?: {
-      count?: 'exact' | 'planned' | 'estimated'
-      defaultToNull?: boolean
-    }
-  ): PostgrestFilterBuilder<Schema, Relation['Row'], null, RelationName, Relationships>
   /**
    * Perform an INSERT into the table or view.
    *
@@ -156,18 +149,8 @@ export default class PostgrestQueryBuilder<
     if (count) {
       prefersHeaders.push(`count=${count}`)
     }
-    if (!defaultToNull) {
-      prefersHeaders.push('missing=default')
-    }
     this.headers['Prefer'] = prefersHeaders.join(',')
 
-    if (Array.isArray(values)) {
-      const columns = values.reduce((acc, x) => acc.concat(Object.keys(x)), [] as string[])
-      if (columns.length > 0) {
-        const uniqueColumns = [...new Set(columns)].map((column) => `"${column}"`)
-        this.url.searchParams.set('columns', uniqueColumns.join(','))
-      }
-    }
 
     return new PostgrestFilterBuilder({
       method,
@@ -187,15 +170,6 @@ export default class PostgrestQueryBuilder<
       onConflict?: string
       ignoreDuplicates?: boolean
       count?: 'exact' | 'planned' | 'estimated'
-    }
-  ): PostgrestFilterBuilder<Schema, Relation['Row'], null, RelationName, Relationships>
-  upsert<Row extends Relation extends { Insert: unknown } ? Relation['Insert'] : never>(
-    values: Row[],
-    options?: {
-      onConflict?: string
-      ignoreDuplicates?: boolean
-      count?: 'exact' | 'planned' | 'estimated'
-      defaultToNull?: boolean
     }
   ): PostgrestFilterBuilder<Schema, Relation['Row'], null, RelationName, Relationships>
   /**
@@ -261,18 +235,8 @@ export default class PostgrestQueryBuilder<
     if (count) {
       prefersHeaders.push(`count=${count}`)
     }
-    if (!defaultToNull) {
-      prefersHeaders.push('missing=default')
-    }
     this.headers['Prefer'] = prefersHeaders.join(',')
 
-    if (Array.isArray(values)) {
-      const columns = values.reduce((acc, x) => acc.concat(Object.keys(x)), [] as string[])
-      if (columns.length > 0) {
-        const uniqueColumns = [...new Set(columns)].map((column) => `"${column}"`)
-        this.url.searchParams.set('columns', uniqueColumns.join(','))
-      }
-    }
 
     return new PostgrestFilterBuilder({
       method,
@@ -336,9 +300,6 @@ export default class PostgrestQueryBuilder<
   }
 
   /**
-   * Perform a DELETE on the table or view.
-   *
-   * By default, deleted rows are not returned. To return it, chain the call
    * with `.select()` after filters.
    *
    * @param options - Named parameters
