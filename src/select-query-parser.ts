@@ -245,21 +245,9 @@ type ConstructFieldDefinition<
         Field['children'],
         unknown
       > extends infer Child
-        ? // One-to-one relationship - referencing column(s) has unique/pkey constraint.
-          HasUniqueFKeyToFRel<
-            RelationName,
-            (Schema['Tables'] & Schema['Views'])[Field['original']] extends {
-              Relationships: infer R
-            }
-              ? R
-              : unknown
-          > extends true
-          ? Child | null
-          : Relationships extends unknown[]
-          ? HasFKeyToFRel<Field['original'], Relationships> extends true
-            ? Child | null
-            : Child[]
-          : Child[]
+        ? (Schema['Tables'][RelationName] extends { columns: { [_ in Field['original']]: any; } } 
+          ? Child | null 
+          : Child[]) 
         : never
     }
   : Field extends { name: string; type: infer T }
