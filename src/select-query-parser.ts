@@ -268,6 +268,21 @@ type ConstructFieldDefinition<
   ? Field['original'] extends keyof Row
     ? { [K in Field['name']]: Row[Field['original']] }
     : SelectQueryError<`Referencing missing column \`${Field['original']}\``>
+  : Field extends { name: string; columnName: string; children: unknown[] }
+  ? {
+      [K in Field['name']]: GetResultHelper<
+        Schema,
+        ExtractRowTypeByColumnName<Schema, Field['columnName']>['Row'],
+        RelationName,
+        Relationships,
+        Field['children'],
+        unknown
+      > extends infer Child
+        ? IsColumnUnique<Schema, Field['columnName']> extends true
+          ? Child | null
+          : Child[]
+        : never
+    }
   : Record<string, unknown>
 
 /**
@@ -345,8 +360,14 @@ type ParseIdentifier<Input extends string> = ReadLetters<Input> extends [
  */
 type ParseField<Input extends string> = Input extends ''
   ? ParserError<'Empty string'>
+  : Input extends `${infer ColumnName}:${infer Remainder}`
+  ? ParseIdentifier<ColumnName> extends [infer ParsedColumnName, `${infer NewRemainder}`]
+    ? ParseField<NewRemainder> extends [infer Field, `${infer FinalRemainder}`]
+      ? [{ ...Field, columnName: ParsedColumnName }, FinalRemainder]
+      : CreateParserErrorIfRequired<ParseField<NewRemainder>, 'Failed to parse field after column name'>
+    : ParserError<'Invalid column name syntax'>
   : ParseIdentifier<Input> extends [infer Name, `${infer Remainder}`]
-  ? EatWhitespace<Remainder> extends `!inner${infer Remainder}`
+  ? EatWhitespace<Remainder> extends `!inner${infer InnerRemainder}`
     ? ParseEmbeddedResource<EatWhitespace<Remainder>> extends [infer Fields, `${infer Remainder}`]
       ? // `field!inner(nodes)`
         [{ name: Name; original: Name; children: Fields }, EatWhitespace<Remainder>]
@@ -356,7 +377,7 @@ type ParseField<Input extends string> = Input extends ''
         >
     : EatWhitespace<Remainder> extends `!${infer Remainder}`
     ? ParseIdentifier<EatWhitespace<Remainder>> extends [infer Hint, `${infer Remainder}`]
-      ? EatWhitespace<Remainder> extends `!inner${infer Remainder}`
+      ? EatWhitespace<Remainder> extends `!inner${infer InnerRemainder}`
         ? ParseEmbeddedResource<EatWhitespace<Remainder>> extends [
             infer Fields,
             `${infer Remainder}`
@@ -392,7 +413,9 @@ type ParseField<Input extends string> = Input extends ''
     ? ParseEmbeddedResource<EatWhitespace<Remainder>>
     : EatWhitespace<Remainder> extends `::${infer Remainder}`
     ? ParseIdentifier<Remainder> extends [`${infer CastType}`, `${infer Remainder}`]
-      ? // `field::type`
+      ? EatWhitespace<Remainder> extends `::${infer Remainder}`
+      ? ParseIdentifier<Remainder> extends [infer CastType, `${infer Remainder}`]
+        ? // `field::type`
         CastType extends PostgreSQLTypes
         ? [{ name: Name; type: TypeScriptTypes<CastType> }, EatWhitespace<Remainder>]
         : ParserError<`Invalid type for \`::\` operator \`${CastType}\``>
@@ -422,7 +445,7 @@ type ParseNode<Input extends string> = Input extends ''
       : ParserError<'Unable to parse spread resource'>
     : ParserError<'Unable to parse spread resource'>
   : ParseIdentifier<Input> extends [infer Name, `${infer Remainder}`]
-  ? EatWhitespace<Remainder> extends `::${infer _Remainder}`
+  ? EatWhitespace<Remainder> extends `::${infer Remainder}`
     ? // `field::`
       // Special case to detect type-casting before renaming.
       ParseField<Input>
@@ -565,3 +588,32 @@ export type GetResult<
 > = ParseQuery<Query> extends unknown[]
   ? GetResultHelper<Schema, Row, RelationName, Relationships, ParseQuery<Query>, unknown>
   : ParseQuery<Query>
+/**
+ * Extracts the row type of the table that contains a column with the given name.
+ *
+ * @param Schema The database schema.
+ * @param ColumnName The name of the column to search for.
+ */
+type ExtractRowTypeByColumnName<Schema, ColumnName extends string> = {
+  [Table in keyof Schema]: Schema[Table] extends { columns: infer Columns }
+    ? ColumnName extends keyof Columns
+      ? Schema[Table]
+      : never
+    : never
+}[keyof Schema];
+
+/**
+ * Determines if a column has a unique constraint across the schema.
+ *
+ * @param Schema The database schema.
+ * @param ColumnName The name of the column to check for uniqueness.
+ */
+type IsColumnUnique<Schema, ColumnName extends string> = {
+  [Table in keyof Schema]: Schema[Table] extends { constraints: infer Constraints }
+    ? ColumnName extends keyof Constraints
+      ? Constraints[ColumnName] extends 'UNIQUE'
+        ? true
+        : false
+      : false
+    : false
+}[keyof Schema];
